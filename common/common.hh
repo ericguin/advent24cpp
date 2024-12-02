@@ -95,3 +95,13 @@ struct Tokenizer {
         }
     }
 };
+
+template <typename T>
+inline std::optional<T> sv_to(std::string_view const& sv) {
+    T to{};
+    auto res = std::from_chars(sv.data(), sv.data() + sv.size(), to);
+    if (res.ptr == (sv.data() + sv.size())) {
+        return to;
+    }
+    return {};
+}
