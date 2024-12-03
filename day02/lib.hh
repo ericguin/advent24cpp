@@ -47,7 +47,7 @@ inline int adjacent_count_if(std::deque<int> const& diffs, std::function<bool(in
     return ret - 1;
 }
 
-inline bool test_safe(std::deque<int> const& levels) {
+inline bool test_safe(std::deque<int> const& levels, bool recurse = true) {
     // calculate diffs
     std::deque<int> diffs{};
     constexpr const static int max_diff = 3;
@@ -67,11 +67,27 @@ inline bool test_safe(std::deque<int> const& levels) {
     auto decrease = std::count_if(diffs.cbegin(), diffs.cend(), [](auto d) { return d < 0; });
     auto bad_slopes = std::min(increase, decrease);
 
-    auto bad_count = too_big + too_small + bad_slopes;
+    auto bad_count = too_big + too_small;
 
     L4 << "Bad counts: " << too_big << " " << too_small << " " << bad_slopes;
 
-    return bad_count <= 1;
+    if ((bad_count > 1 || bad_slopes <= 1) && recurse) {
+        // brute force mode
+        bool any = false;
+        for (std::size_t i = 0; i < levels.size(); i ++) {
+            std::deque<int> copy = levels;
+            auto iter = copy.begin() + i;
+            copy.erase(iter);
+            if (test_safe(copy, false)) {
+                any = true;
+                break;
+            }
+        }
+
+        return any;
+    }
+
+    return bad_count == 0 && bad_slopes == 0;
 }
 
 inline bool parse_line2(std::string_view line, int& safe) {
