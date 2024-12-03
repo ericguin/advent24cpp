@@ -16,6 +16,15 @@ function(CreateDay day_folder)
         message(STATUS "Copying over " ${in})
         configure_file("${in}" "${in}" COPYONLY)
     endforeach()
+    add_custom_target(${day_folder}_re
+        COMMAND ${day_folder}_e
+        DEPENDS ${day_folder}_e
+    )
+
+    add_custom_target(${day_folder}_rt
+        COMMAND ${day_folder}_t
+        DEPENDS ${day_folder}_t
+    )
 endfunction()
 
 function(BuildDays)
