@@ -1,5 +1,5 @@
 #include "common.hh"
-#include <deque>
+#include <vector>
 #include <numeric>
 #include <string_view>
 #include <algorithm>
@@ -16,7 +16,7 @@ inline bool parse_line(std::string_view line, int& safe) {
     bool good{true};
     L1 << "Parsing line: " << line;
     auto first = levels.next().value();
-    std::deque<int> trail{};
+    std::vector<int> trail{};
     trail.push_back(sv_to<int>(first).value());
     levels.iter([&](auto l) {
         int lev = sv_to<int>(l).value();
@@ -36,7 +36,7 @@ inline bool parse_line(std::string_view line, int& safe) {
     return true;
 }
 
-inline int adjacent_count_if(std::deque<int> const& diffs, std::function<bool(int , int)> p) {
+inline int adjacent_count_if(std::vector<int> const& diffs, std::function<bool(int , int)> p) {
     int ret{};
     auto m = diffs.cbegin();
     while (m != diffs.cend()) {
@@ -47,52 +47,55 @@ inline int adjacent_count_if(std::deque<int> const& diffs, std::function<bool(in
     return ret - 1;
 }
 
-inline bool test_safe(std::deque<int> const& levels, bool recurse = true) {
+inline bool test_safe(std::vector<int> const& levels, bool recurse = true) {
     // calculate diffs
-    std::deque<int> diffs{};
+    std::vector<int> diffs{};
     constexpr const static int max_diff = 3;
     constexpr const static int min_diff = 1;
 
     std::adjacent_difference(levels.cbegin(), levels.cend(), std::back_inserter(diffs));
-    diffs.pop_front();
+    diffs.erase(diffs.begin());
     {
         auto l = L4;
         l << "Diffs are: ";
         std::for_each(diffs.cbegin(), diffs.cend(),
                       [&](auto d) { l << d << " "; });
     }
-    auto too_big = std::count_if(diffs.cbegin(), diffs.cend(), [](auto d){ return std::abs(d) > max_diff; });
-    auto too_small = std::count_if(diffs.cbegin(), diffs.cend(), [](auto d){ return std::abs(d) < min_diff; });
-    auto increase = std::count_if(diffs.cbegin(), diffs.cend(), [](auto d) { return d > 0; });
-    auto decrease = std::count_if(diffs.cbegin(), diffs.cend(), [](auto d) { return d < 0; });
-    auto bad_slopes = std::min(increase, decrease);
 
-    auto bad_count = too_big + too_small;
+    int to_remove{0};
+    bool increasing{diffs[0] >= 0};
 
-    L4 << "Bad counts: " << too_big << " " << too_small << " " << bad_slopes;
-
-    if ((bad_count > 1 || bad_slopes <= 1) && recurse) {
-        // brute force mode
-        bool any = false;
-        for (std::size_t i = 0; i < levels.size(); i ++) {
-            std::deque<int> copy = levels;
-            auto iter = copy.begin() + i;
-            copy.erase(iter);
-            if (test_safe(copy, false)) {
-                any = true;
-                break;
+    for (auto dp = diffs.begin(); dp != diffs.end(); ++dp) {
+        auto diff = *dp;
+        if (diff == 0) to_remove ++;
+        else if (abs(diff) > max_diff) {
+            auto next = dp + 1;
+            to_remove++;
+            if (next != diffs.end() && dp != diffs.begin()) {
+                if (abs(*next + diff) <= max_diff) {
+                    *next += diff;
+                } else {
+                    // Impossible!
+                    return false;
+                }
             }
+        } else if (diff < 0 && increasing) {
+            to_remove ++;
+            increasing = false;
+        } else if (diff > 0 && !increasing) {
+            to_remove ++;
+            increasing = true;
         }
 
-        return any;
+        if (to_remove >= 2) return false;
     }
 
-    return bad_count == 0 && bad_slopes == 0;
+    return true;
 }
 
 inline bool parse_line2(std::string_view line, int& safe) {
     Tokenizer levels{line, ' '};
-    std::deque<int> parsed_levels{};
+    std::vector<int> parsed_levels{};
     levels.iter([&](auto l) { parsed_levels.push_back(sv_to<int>(l).value()); return true; });
 
     L1 << "For line: " << line;
