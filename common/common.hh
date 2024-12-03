@@ -31,6 +31,7 @@ struct Logger {
 #define L1 Logger{1}
 #define L2 Logger{2}
 #define L3 Logger{3}
+#define L4 Logger{4}
 
 inline std::string ReadEntireFile(std::string path) {
     std::fstream stream{path};

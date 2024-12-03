@@ -1,6 +1,8 @@
 #include "common.hh"
 #include <deque>
+#include <numeric>
 #include <string_view>
+#include <algorithm>
 
 inline bool level_pass(int last, int lev, bool increasing) {
     auto diff = last - lev;
@@ -34,42 +36,42 @@ inline bool parse_line(std::string_view line, int& safe) {
     return true;
 }
 
-inline bool test_safe(std::deque<int> const& levels, bool increasing) {
-    bool damp = true;
-    auto cursor = levels.cbegin() + 1;
-    while (cursor != levels.cend()) {
-        auto compare = cursor - 1;
-
-        if (!level_pass(*(compare), *cursor, increasing)) {
-            if (damp) {
-                damp = false;
-                L3 << "Damping";
-                if (compare == levels.cbegin()) {
-                    // assume skip first?
-                    L3 << "We are assuming the first value is bad, move on";
-                } else if (cursor + 1 == levels.cend()) {
-                    L3 << "Assuming last value is bad, move on";
-                } else {
-                    auto last = compare - 1;
-                    L3 << "Re-checking last " << *(last) << " with " << *cursor;
-                    auto is_last_bad = level_pass(*(last), *(cursor), increasing);
-                    if (!is_last_bad) {
-                        auto next = cursor + 1;
-                        L3 << "Re-checking next " << *compare << " with " << *next;
-                        auto am_i_bad = level_pass(*(compare), *(next), increasing);
-                        if (!am_i_bad) {
-                            return false;
-                        }
-                    }
-                }
-            } else {
-                return false;
-            }
-        }
-
-        cursor ++;
+inline int adjacent_count_if(std::deque<int> const& diffs, std::function<bool(int , int)> p) {
+    int ret{};
+    auto m = diffs.cbegin();
+    while (m != diffs.cend()) {
+        m = std::adjacent_find(m, diffs.cend(), p);
+        ret++;
     }
-    return true;
+
+    return ret - 1;
+}
+
+inline bool test_safe(std::deque<int> const& levels) {
+    // calculate diffs
+    std::deque<int> diffs{};
+    constexpr const static int max_diff = 3;
+    constexpr const static int min_diff = 1;
+
+    std::adjacent_difference(levels.cbegin(), levels.cend(), std::back_inserter(diffs));
+    diffs.pop_front();
+    {
+        auto l = L4;
+        l << "Diffs are: ";
+        std::for_each(diffs.cbegin(), diffs.cend(),
+                      [&](auto d) { l << d << " "; });
+    }
+    auto too_big = std::count_if(diffs.cbegin(), diffs.cend(), [](auto d){ return std::abs(d) > max_diff; });
+    auto too_small = std::count_if(diffs.cbegin(), diffs.cend(), [](auto d){ return std::abs(d) < min_diff; });
+    auto increase = std::count_if(diffs.cbegin(), diffs.cend(), [](auto d) { return d > 0; });
+    auto decrease = std::count_if(diffs.cbegin(), diffs.cend(), [](auto d) { return d < 0; });
+    auto bad_slopes = std::min(increase, decrease);
+
+    auto bad_count = too_big + too_small + bad_slopes;
+
+    L4 << "Bad counts: " << too_big << " " << too_small << " " << bad_slopes;
+
+    return bad_count <= 1;
 }
 
 inline bool parse_line2(std::string_view line, int& safe) {
@@ -80,16 +82,10 @@ inline bool parse_line2(std::string_view line, int& safe) {
     L1 << "For line: " << line;
     // assume increase
 
-    bool it = test_safe(parsed_levels, true);
-    L2 << "Increase test: " << it;
+    bool it = test_safe(parsed_levels);
 
-    // assume decrease
-    bool dt = test_safe(parsed_levels, false);
-    L2 << "Decrease test: " << dt;
-
-    if (it | dt) safe ++;
-
-    L1 << "This line was " << ((it | dt) ? "Safe" : "Unsafe");
+    L1 << "This line was " << ((it) ? "Safe" : "Unsafe");
+    if (it) safe ++;
     return true;
 }
 
