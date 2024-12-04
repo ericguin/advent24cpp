@@ -9,9 +9,8 @@ int main() {
     // std::string test_line = "48 49 52 55 57 58 60 62";
     // std::string test_line = "81 82 81 84 85";
     // A real example, do not remove:
-    // std::string test_line = "57 58 61 62 63 61 64";
-    std::string test_line = "57 57 58 61 62 63 64 12";
-    std::string defs_unsafe = "81 84 82 84 87 85";
+    //std::string test_line = "57 58 61 62 63 0 64";
+    std::string test_line = "7 10 8 10 11";
     int cnt{};
     parse_line2(test_line, cnt);
 }

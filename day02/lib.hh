@@ -63,30 +63,55 @@ inline bool test_safe(std::vector<int> const& levels, bool recurse = true) {
     }
 
     int to_remove{0};
-    bool increasing{diffs[0] >= 0};
+    int increasing = std::count_if(diffs.cbegin(), diffs.cend(), [](auto d) { return d > 0;});
+    int decreasing = std::count_if(diffs.cbegin(), diffs.cend(), [](auto d) { return d < 0;});
+
+    int bad = std::min(increasing, decreasing);
+
+    // 1 for increasing
+    // -1 for decreasing
+    int direction = bad == decreasing ? 1 : -1;
+    bool odd = true;
 
     for (auto dp = diffs.begin(); dp != diffs.end(); ++dp) {
         auto diff = *dp;
+        bool removing = false;
+
         if (diff == 0) to_remove ++;
         else if (abs(diff) > max_diff) {
+            removing = true;
+        } else if ((diff < 0) != (direction < 0)) {
+            removing = true;
+        }
+
+        if (removing) {
+            // now that we're removing a substantial number
+            // we need to re-calculate the next diff
+            // (unless it is the first or last number)
             auto next = dp + 1;
-            to_remove++;
+            auto prev = dp - 1;
+
+            L4 << "We are in correction, p = " << *prev << " | n = " << *next;
+
             if (next != diffs.end() && dp != diffs.begin()) {
-                if (abs(*next + diff) <= max_diff) {
-                    *next += diff;
+                auto correction = abs(*prev + diff);
+                if (correction <= max_diff && correction > 0) {
+                    if (odd) {
+                        *next += diff;
+                    } else {
+                        *next = diff + *prev;
+                    }
                 } else {
                     // Impossible!
                     return false;
                 }
             }
-        } else if (diff < 0 && increasing) {
+
             to_remove ++;
-            increasing = false;
-        } else if (diff > 0 && !increasing) {
-            to_remove ++;
-            increasing = true;
         }
 
+        odd = !odd;
+        
         if (to_remove >= 2) return false;
     }
 
