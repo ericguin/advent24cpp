@@ -106,3 +106,108 @@ inline std::optional<T> sv_to(std::string_view const& sv) {
     }
     return {};
 }
+
+struct Grid {
+    int columns{};
+    std::vector<std::string_view> lines{};
+
+    bool position_valid(int col, int row) {
+        if (row >= lines.size()) return false;
+        if (col >= lines[0].size()) return false;
+        return true;
+    }
+
+    struct Iterator {
+        int col, row;
+        Grid& parent;
+
+        char value() {
+            return parent.lines[row][col];
+        }
+
+        enum DirBase {
+            L = 3,
+            H = 2,
+            R = 1,
+            U = 3 << 2,
+            V = 2 << 2,
+            D = 1 << 2
+        };
+
+        enum Direction {
+            LEFT = L | V,
+            RIGHT = R | V,
+            UP = U | H,
+            DOWN = D | H,
+            UPLEFT = U | L,
+            UPRIGHT = U | R,
+            DOWNLEFT = D | L,
+            DOWNRIGHT = D | R
+        };
+
+        inline static const Direction Directions[] = {LEFT, RIGHT, UP, DOWN, UPLEFT, UPRIGHT, DOWNLEFT, DOWNRIGHT};
+
+        bool move(Direction dir) {
+            int nc = col;
+            int nr = row;
+
+            int horiz = 2 - (dir & 0b11);
+            int vert = 2 - ((dir >> 2) & 0b11);
+
+            nc += horiz;
+            nr += vert;
+
+            if (parent.position_valid(nc, nr)) {
+                col = nc;
+                row = nr;
+                return true;
+            }
+
+            return false;
+        }
+
+        bool scan(Direction dir, std::string_view tgt) {
+            auto cursor = tgt.begin();
+
+            while (cursor != tgt.end()) {
+                if (*cursor == value()) {
+                    if (!move(dir)) return false;
+                    cursor ++;
+                } else {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        int scanall(std::string_view tgt) {
+            int ret{0};
+            for (auto dir : Directions) {
+                if (scan(dir, tgt)) ret++;
+            }
+            return ret;
+        }
+    };
+
+    std::optional<Iterator> at(int col, int row) {
+        if (!position_valid(col, row)) return {};
+        return Iterator{col, row, *this};
+    }
+
+    void iter_cells(std::function<bool(Iterator)> p) {
+        Iterator cursor = at(0,0).value();
+
+        while (true) {
+            if (!p(cursor)) break;
+            if (!cursor.move(Iterator::RIGHT)) {
+                if (position_valid(0, cursor.row+1)) {
+                    cursor.col = 0;
+                    cursor.row = cursor.row + 1;
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+};
