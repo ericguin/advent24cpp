@@ -4,7 +4,6 @@
 #include <optional>
 #include <sstream>
 #include <functional>
-#include <filesystem>
 #include <string_view>
 
 struct Logger {
@@ -36,10 +35,6 @@ struct Logger {
 inline std::string ReadEntireFile(std::string path) {
     std::fstream stream{path};
     std::ostringstream out{};
-
-    L1 << "Got path? " << path;
-    L1 << "My path is " << std::filesystem::current_path();
-    L1 << "What is status: " << stream.is_open();
 
     out << stream.rdbuf();
 
@@ -125,6 +120,10 @@ struct Grid {
             return parent.lines[row][col];
         }
 
+        bool equals(Iterator const& other) {
+            return col == other.col && row == other.row;
+        }
+
         enum DirBase {
             L = 3,
             H = 2,
@@ -164,6 +163,26 @@ struct Grid {
             }
 
             return false;
+        }
+
+        std::optional<Iterator> move_into(Direction dir) const {
+            int nc = col;
+            int nr = row;
+
+            int horiz = 2 - (dir & 0b11);
+            int vert = 2 - ((dir >> 2) & 0b11);
+
+            nc += horiz;
+            nr += vert;
+
+            if (parent.position_valid(nc, nr)) {
+                Iterator out = *this;
+                out.col = nc;
+                out.row = nr;
+                return out;
+            }
+
+            return {};
         }
 
         bool scan(Direction dir, std::string_view tgt) {
@@ -211,3 +230,12 @@ struct Grid {
         }
     }
 };
+
+template <typename T>
+inline bool all_have_value(std::initializer_list<std::optional<T>> Args) {
+    bool ret{true};
+    for (auto arg : Args) {
+        ret &= arg.has_value();
+    }
+    return ret;
+}

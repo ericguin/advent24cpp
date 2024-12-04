@@ -1,9 +1,11 @@
 #include "lib.hh"
 
-int Logger::LogLevel = 1;
+int Logger::LogLevel = 0;
 
 int main() {
-    auto contents = ReadEntireFile("day03/ex02.txt");
-    int res = part2_the_dumb_way(contents);
+    auto contents = ReadEntireFile("day04/input.txt");
+    auto res = part1(contents);
     L0 << "Answer is: " << res;
+    auto res2 = part2(contents);
+    L0 << "Answer is: " << res2;
 }
