@@ -67,18 +67,27 @@ struct Scanner {
         auto c = skip_wile(l);
         return base.substr(anchor, c);
     }
+
+    bool advance_if(std::function<bool(char)> l) {
+        if (empty()) return false;
+        if (l(base[loc])) loc++;
+        return true;
+    }
 };
 
 struct Tokenizer {
     Scanner scan;
     char tok;
+    bool greedy{true};
 
     Tokenizer(std::string_view s, char tok): scan{s}, tok{tok} {}
 
     std::optional<std::string_view> next() {
         std::optional<std::string_view> ret{};
 
-        scan.skip_wile([this](char c) {return c == tok;});
+        if (greedy) scan.skip_wile([this](char c) {return c == tok;});
+        else scan.advance_if([this](char c) {return c == tok;});
+
         ret = scan.take_while([this](char c) {return c != tok;});
 
         return ret;
