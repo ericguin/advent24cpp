@@ -1,5 +1,4 @@
 #include "common.hh"
-#include <list>
 #include <limits>
 #include <memory>
 
@@ -42,6 +41,20 @@ struct Ordering {
         auto ptrB = b - begin;
 
         return !entries[ptrA].after[ptrB];
+    }
+
+    bool is_before(int a, int b) const {
+        auto ptrA = a - begin;
+        auto ptrB = b - begin;
+
+        return entries[ptrA].before[ptrB];
+    }
+
+    bool is_after(int a, int b) const {
+        auto ptrA = a - begin;
+        auto ptrB = b - begin;
+
+        return entries[ptrA].after[ptrB];
     }
 
     void print_order() const {
@@ -125,26 +138,71 @@ inline int get_middle(Manual const& man) {
     return *mid;
 }
 
+
+inline auto bad_index(auto begin, auto end, Ordering const& order) {
+    for (auto anchor = begin; anchor != end; anchor ++) {
+        for (auto cursor = std::next(anchor); cursor != end; cursor++) {
+            if (!order.good_order(*anchor, *cursor)) {
+                return cursor;
+                break;
+            }
+        }
+    }
+
+    return end;
+}
+
+inline auto bad_index(Manual const& manual, Ordering const& order) {
+    return bad_index(manual.cbegin(), manual.cend(), order);
+}
+
 inline int verify_manuals(std::vector<Manual> const& manuals, Ordering const& order) {
+    int ret{0};
+
+    for (auto const& manual : manuals) {
+        auto bad = bad_index(manual, order);
+        if (bad == manual.cend()) ret += get_middle(manual);
+    }
+
+    return ret;
+}
+
+
+inline int fix_manual(Manual manual, Ordering const& order) {
+    int ret{};
+
+    L1 << "Fixing manual";
+
+    for (auto bad = bad_index(manual.begin(), manual.end(), order); bad != manual.end(); bad = bad_index(manual.begin(), manual.end(), order)) {
+        auto log = L2;
+        L2 << ", is bad";
+        // are there ones I should be before to my left
+        auto most_before = manual.rend();
+        for (auto cursor = std::next(std::reverse_iterator(bad)); cursor != manual.rend(); cursor ++) {
+            if (order.is_before(*bad, *cursor)) most_before = cursor;
+        }
+        // are there ones I should be after to my right
+        auto most_after = manual.end();
+        for (auto cursor = std::next(bad); cursor != manual.end(); cursor ++) {
+            if (order.is_after(*cursor, *bad)) most_after = cursor;
+        }
+
+        if (most_before != manual.rend()) {
+            L1 << "There's one that shoulda dun been after us";
+        } else if (most_after != manual.end()) {
+            L1 << "There's one that shoulda dun been before us";
+        }
+
+        break;
+    }
+    return ret;
+}
+
+inline int fix_manuals(std::vector<Manual> const& manuals, Ordering const& order) {
     int ret{};
 
     for (auto const& manual : manuals) {
-        bool good{true};
-        L1 << "Trying list";
-        for (auto anchor = manual.cbegin(); anchor != manual.cend(); anchor ++) {
-            for (auto cursor = std::next(anchor); cursor != manual.cend(); cursor++) {
-                auto log = L1;
-                log << "Checking that " << *anchor << " is not after " << *cursor;
-                if (!order.good_order(*anchor, *cursor)) {
-                    good = false;
-                    log << ", BAD";
-                    break;
-                }
-                log << ", GOOD";
-            }
-            if (!good) break;
-        }
-        if (good) ret += get_middle(manual);
+        ret += fix_manual(manual, order);
     }
 
     return ret;
@@ -171,7 +229,7 @@ inline int part2(std::string const& contents) {
     auto orders = parse_orders(lines, lower, upper);
     auto manuals = parse_manuals(lines);
     auto ordering = gen_ordering(orders, lower, upper);
-    auto good = verify_manuals(manuals, ordering);
+    auto good = fix_manuals(manuals, ordering);
 
     return 0;
 }
