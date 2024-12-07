@@ -2,3 +2,4 @@ build
 *.txt
 !CMakeLists.txt
 .cache/
+.vscode/

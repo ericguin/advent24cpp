@@ -1,6 +1,7 @@
 #include "common.hh"
 #include <limits>
 #include <memory>
+#include <algorithm>
 
 using Order = std::pair<int, int>;
 using Manual = std::vector<int>;
@@ -143,7 +144,7 @@ inline auto bad_index(auto begin, auto end, Ordering const& order) {
     for (auto anchor = begin; anchor != end; anchor ++) {
         for (auto cursor = std::next(anchor); cursor != end; cursor++) {
             if (!order.good_order(*anchor, *cursor)) {
-                return cursor;
+                return anchor;
                 break;
             }
         }
@@ -170,31 +171,37 @@ inline int verify_manuals(std::vector<Manual> const& manuals, Ordering const& or
 
 inline int fix_manual(Manual manual, Ordering const& order) {
     int ret{};
+    bool oof{false};
 
     L1 << "Fixing manual";
 
     for (auto bad = bad_index(manual.begin(), manual.end(), order); bad != manual.end(); bad = bad_index(manual.begin(), manual.end(), order)) {
         auto log = L2;
-        L2 << ", is bad";
-        // are there ones I should be before to my left
-        auto most_before = manual.rend();
-        for (auto cursor = std::next(std::reverse_iterator(bad)); cursor != manual.rend(); cursor ++) {
-            if (order.is_before(*bad, *cursor)) most_before = cursor;
-        }
+        oof = true;
+        L2 << ", is bad: " << *bad << ", ";
+        
         // are there ones I should be after to my right
         auto most_after = manual.end();
-        for (auto cursor = std::next(bad); cursor != manual.end(); cursor ++) {
-            if (order.is_after(*cursor, *bad)) most_after = cursor;
+        for (auto cursor = bad; cursor != manual.end(); cursor ++) {
+            if (order.is_after(*bad, *cursor)) most_after = cursor;
         }
 
-        if (most_before != manual.rend()) {
-            L1 << "There's one that shoulda dun been after us";
-        } else if (most_after != manual.end()) {
-            L1 << "There's one that shoulda dun been before us";
+        if (most_after != manual.end()) {
+            L1 << "There's one that shoulda dun been before us " << *most_after;
+            std::iter_swap(bad, most_after);
         }
-
-        break;
     }
+
+    if (oof) {
+        auto log = L1;
+        log << "is good now: ";
+        for (auto const& i : manual) {
+            log << ", " << i;
+        }
+        ret += get_middle(manual);
+    }
+
+
     return ret;
 }
 
@@ -224,12 +231,13 @@ inline int part1(std::string const& contents) {
 inline int part2(std::string const& contents) {
     Tokenizer lines{contents, '\n'};
     lines.greedy = false;
+    int ret{};
 
     int lower,upper;
     auto orders = parse_orders(lines, lower, upper);
     auto manuals = parse_manuals(lines);
     auto ordering = gen_ordering(orders, lower, upper);
-    auto good = fix_manuals(manuals, ordering);
+    ret += fix_manuals(manuals, ordering);
 
-    return 0;
+    return ret;
 }
