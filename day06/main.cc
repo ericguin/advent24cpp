@@ -4,5 +4,7 @@ int Logger::LogLevel = 0;
 
 int main() {
     auto contents = ReadEntireFile("day06/input.txt");
-    L0 << "Part 1: " << part1(contents);
+    // 795 is too low
+    // 802 is too low
+    L0 << "Ans " << part2(contents);
 }

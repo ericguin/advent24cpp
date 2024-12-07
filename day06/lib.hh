@@ -1,5 +1,10 @@
 #include "common.hh"
 
+constexpr static const char test1 = '0' | 0b0011;
+constexpr static const char test2 = '0' | 0b0110;
+constexpr static const char test3 = '0' | 0b1100;
+constexpr static const char test4 = '0' | 0b1001;
+
 struct Guard {
     Grid::Iterator pos;
     std::string& map;
@@ -23,17 +28,54 @@ struct Guard {
         }
     }
 
+    static bool has_direction(char c, Grid::Iterator::Direction dir) {
+        using d = Grid::Iterator::Direction;
+        if ((c & 0b10000) == 0) return false;
+        switch (dir) {
+            case d::UP:
+                return (c & 0b0001) > 0;
+                break;
+            case d::RIGHT:
+                return (c & 0b0010) > 0;
+                break;
+            case d::DOWN:
+                return (c & 0b0100) > 0;
+                break;
+            case d::LEFT:
+                return (c & 0b1000) > 0;
+                break;
+        }
+
+        return false;
+    }
+
+    void mark_near_miss() {
+        auto if_i_turn = Grid::Iterator::Rotate90Right(dir);
+        auto that_cell = pos.move_into(if_i_turn);
+
+        if (that_cell.has_value()) {
+            if (has_direction(that_cell->value(), if_i_turn)) {
+                map[pos.index(map)] |= 0b1 << 6;
+            }
+        }
+    }
+
     void walk() {
         while (true) {
             if (pos.value() == '.' || pos.value() == '^') map[pos.index(map)] = '0';
-            mark_direction();
             auto next = pos.move_into(dir);
             if (next.has_value()) {
+                auto nextpos = pos;
                 if (next->value() == '#') {
                     dir = Grid::Iterator::Rotate90Right(dir);
                 } else {
-                    pos = next.value();
+                    nextpos = next.value();
                 }
+
+                mark_direction();
+                mark_near_miss();
+
+                pos = nextpos;
             } else {
                 return;
             }
@@ -70,13 +112,17 @@ inline int part1(std::string& contents) {
 
     int res{};
     grid.iter_cells([&](auto loc) {
-        if (loc.value() >= '0' && loc.value() <= '?') {
+        if (loc.value() >= '0') {
             res++;
         }
         return true;
     });
 
     return res;
+}
+
+inline bool bit_test(char c, char t) {
+    return ((c & t) == t);
 }
 
 inline int part2(std::string& contents) {
@@ -97,15 +143,15 @@ inline int part2(std::string& contents) {
     guard.walk();
 
     int res{};
-    constexpr static const char test1 = '0' | 0b0011;
-    constexpr static const char test2 = '0' | 0b0110;
-    constexpr static const char test3 = '0' | 0b1100;
-    constexpr static const char test4 = '0' | 0b1001;
     L1 << test1 << test2 << test3 << test4;
     grid.iter_cells([&](auto loc) {
         auto c = loc.value();
-        if (c == test1 || c == test2 || c == test3 || c == test4) {
+        if (bit_test(c, test1) || bit_test(c, test2) || bit_test(c, test3) || bit_test(c, test4)) {
             res++;
+        }
+        if ((c & 0b1000000) > 0) {
+            if (loc.col == guard_start.col && loc.row == guard_start.row) return true;
+            res ++;
         }
         return true;
     });
