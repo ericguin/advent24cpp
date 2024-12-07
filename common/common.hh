@@ -68,6 +68,10 @@ struct Scanner {
         return base.substr(anchor, c);
     }
 
+    std::string_view remainder() {
+        return base.substr(loc);
+    }
+
     bool advance_if(std::function<bool(char)> l) {
         if (empty()) return false;
         if (l(base[loc])) loc++;
@@ -125,8 +129,26 @@ struct Grid {
         int col, row;
         Grid& parent;
 
+        Iterator& operator=(Iterator const& other) {
+            col = other.col;
+            row = other.row;
+            parent = other.parent;
+            return *this;
+        }
+
         char value() {
             return parent.lines[row][col];
+        }
+        
+        std::size_t index(std::string const& parent_we_hope) {
+            // This is probably less stupid than it looks :)
+            // The only way I can think of to reliably index back
+            // into the string from whence we generated this string_view
+            // is to compare their data pointers, else we might mis
+            // calculate the offset based on what characters were
+            // excluded during its creation
+            auto uh = parent.lines[row].data() + col;
+            return uh - parent_we_hope.c_str();
         }
 
         bool equals(Iterator const& other) {
@@ -152,6 +174,25 @@ struct Grid {
             DOWNLEFT = D | L,
             DOWNRIGHT = D | R
         };
+
+        static auto SplitDirection(Direction in) {
+            auto dir = static_cast<int>(in);
+            auto horiz = dir & 0b11;
+            auto vert = (dir >> 2) & 0b11;
+            return std::make_tuple(horiz, vert);
+        }
+
+        static Direction Rotate90Right(Direction in) {
+            // SO MUNTED DEAL WITH IT
+            switch (in) {
+                case UP: return RIGHT;
+                case RIGHT: return DOWN;
+                case DOWN: return LEFT;
+                case LEFT: return UP;
+            }
+
+            return in;
+        }
 
         inline static const Direction Directions[] = {LEFT, RIGHT, UP, DOWN, UPLEFT, UPRIGHT, DOWNLEFT, DOWNRIGHT};
 
