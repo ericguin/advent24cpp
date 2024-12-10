@@ -35,3 +35,7 @@ function(BuildDays)
 endfunction()
 
 BuildDays()
+
+find_package(raylib)
+target_link_libraries(day06_e PUBLIC raylib)
+target_link_libraries(day06_t PUBLIC raylib)
