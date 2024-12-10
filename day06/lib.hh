@@ -1,4 +1,7 @@
+#pragma once
 #include "common.hh"
+
+#include <bitset>
 
 constexpr static const char test1 = '0' | 0b0011;
 constexpr static const char test2 = '0' | 0b0110;
@@ -50,28 +53,36 @@ struct Guard {
     return false;
   }
 
-  static bool has_been_visited(char c) { return (c & 0b1111) > 0; }
+  static std::bitset<4> get_dirs(char c) {
+    if ((c & 0b10000) == 0)
+      return std::bitset<4>(0);
+    else
+      return std::bitset<4>(c);
+  }
 
-  void mark_near_miss() {
+  static bool has_been_visited(char c) { return c > '0' && (c & 0b1111) > 0; }
+
+  void check_loop() {
     auto if_i_turn = Grid::Iterator::Rotate90Right(dir);
+    std::optional<Grid::Iterator> current_square = pos;
     // We probably need to iterate until we hit an obstacle or
     // leave the square
-    auto that_cell = pos.move_into(if_i_turn);
-
-    if (that_cell.has_value()) {
-      if (has_direction(that_cell->value(), if_i_turn)) {
+    while (current_square.has_value()) {
+      auto val = current_square->value();
+      auto dirs = get_dirs(val);
+      if (val == '#') {
+        break;
+      } else if (has_direction(val, if_i_turn)) {
         auto in_front_of_me = pos.move_into(dir);
         if (in_front_of_me.has_value() &&
             !has_been_visited(in_front_of_me->value())) {
           map[in_front_of_me->index(map)] |= 0b1 << 6;
+          break;
         }
       }
+      current_square = current_square->move_into(if_i_turn);
     }
   }
-
-  void mark_direct_hit() {}
-
-  void place_possible_mark() {}
 
   bool step() {
     if (pos.value() == '.' || pos.value() == '^')
@@ -79,6 +90,7 @@ struct Guard {
     auto next = pos.move_into(dir);
     if (next.has_value()) {
       auto nextpos = pos;
+
       if (next->value() == '#') {
         dir = Grid::Iterator::Rotate90Right(dir);
       } else {
@@ -86,8 +98,7 @@ struct Guard {
       }
 
       mark_direction();
-      mark_near_miss();
-      mark_direct_hit();
+      check_loop();
 
       pos = nextpos;
     } else {
