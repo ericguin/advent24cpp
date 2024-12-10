@@ -160,7 +160,9 @@ inline int part2(std::string &contents) {
   grid.iter_cells([&](auto loc) {
     if (loc.value() == '^') {
       guard_start = loc;
-      return false;
+    }
+    if (loc.value() != '#') {
+      contents[loc.index(contents)] = '0';
     }
     return true;
   });
